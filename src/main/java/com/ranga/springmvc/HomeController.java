@@ -3,11 +3,14 @@ package com.ranga.springmvc;
 import java.text.DateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ScheduledFuture;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,8 +31,9 @@ public class HomeController {
 	@Autowired
 	ApplicationConfig applicationConfig;
 
+	ScheduledFuture<WorkRunnable> scheduledTask = null;
+
 	/**
-	 * Simply selects the home view to render by returning its name.
 	 */
 	@RequestMapping(value = "/", method = RequestMethod.GET)
 	public String home(Locale locale, Model model) {
@@ -52,6 +56,17 @@ public class HomeController {
 				applicationConfig.getTaskExecutor().execute(
 						new java.lang.Thread(wr1));
 			}
+		}
+
+		if (scheduledTask == null || scheduledTask.isDone() || scheduledTask.isCancelled()) {
+			WorkRunnable swr = (WorkRunnable) applicationConfig.getAppCtx()
+					.getBean("workRunnable");
+			scheduledTask = applicationConfig.getTaskScheduler()
+					.scheduleWithFixedDelay(swr, 2000);
+		}
+		else
+		{
+			scheduledTask.cancel(true);
 		}
 
 		return "home";
