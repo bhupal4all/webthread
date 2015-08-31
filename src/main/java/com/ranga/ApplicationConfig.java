@@ -1,5 +1,6 @@
 package com.ranga;
 
+import java.util.Date;
 import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -8,15 +9,23 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Scope;
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.scheduling.Trigger;
+import org.springframework.scheduling.TriggerContext;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.scheduling.support.CronTrigger;
 import org.springframework.stereotype.Component;
+
+import com.ranga.threads.WorkRunnable;
 
 @Component("applictionConfig")
 @Scope("application")
 public class ApplicationConfig implements
-		org.springframework.context.ApplicationContextAware {
+		org.springframework.context.ApplicationContextAware,
+		ApplicationListener<ContextRefreshedEvent> {
 	static final long serialVersionUID = 02L;
 
 	ApplicationContext applicationContext = null;
@@ -60,6 +69,7 @@ public class ApplicationConfig implements
 
 		taskScheduler.setThreadFactory(threadFactory);
 		taskScheduler.setRejectedExecutionHandler(rejectedExecutionHandler);
+		taskScheduler.setThreadNamePrefix("TaskScheduler");
 		taskScheduler.initialize();
 	}
 
@@ -91,6 +101,15 @@ public class ApplicationConfig implements
 
 	public ThreadPoolTaskExecutor getTaskExecutor() {
 		return taskExecutor;
+	}
+
+	// //////////////////////////////////////////////////////////////////////
+	@Override
+	public void onApplicationEvent(ContextRefreshedEvent event) {
+		System.out.println("Application is initialized");
+
+		WorkRunnable swr = (WorkRunnable) getAppCtx().getBean("workRunnable");
+		getTaskScheduler().schedule(swr, new CronTrigger("*/2 * * * * *"));
 	}
 
 }
